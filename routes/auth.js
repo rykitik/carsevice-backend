@@ -7,13 +7,13 @@ const router = express.Router();
 const secret = 'yakimov';
 
 router.post('/register', async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, role } = req.body;
   const hashedPassword = await bcrypt.hash(password, 10);
 
   try {
     const newUser = await pool.query(
-      'INSERT INTO clients (name, email, password) VALUES ($1, $2, $3) RETURNING *',
-      [name, email, hashedPassword]
+      'INSERT INTO clients (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING *',
+      [name, email, hashedPassword, role]
     );
     res.json(newUser.rows[0]);
   } catch (error) {
@@ -38,8 +38,8 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid password' });
     }
 
-    const token = jwt.sign({ userId: user.rows[0].id }, secret, { expiresIn: '1h' });
-    res.json({ token });
+    const token = jwt.sign({ userId: user.rows[0].id, role: user.rows[0].role }, secret, { expiresIn: '1h' });
+    res.json({ token, user: { id: user.rows[0].id, name: user.rows[0].name, role: user.rows[0].role } });
   } catch (error) {
     console.error('Error during user login:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -47,11 +47,13 @@ router.post('/login', async (req, res) => {
 });
 
 const authenticateJWT = (req, res, next) => {
-  const token = req.header('Authorization').replace('Bearer ', '');
+  const authHeader = req.header('Authorization');
 
-  if (!token) {
+  if (!authHeader) {
     return res.status(403).json({ message: 'No token provided' });
   }
+
+  const token = authHeader.replace('Bearer ', '');
 
   jwt.verify(token, secret, (err, decoded) => {
     if (err) {
@@ -59,6 +61,7 @@ const authenticateJWT = (req, res, next) => {
     }
 
     req.userId = decoded.userId;
+    req.userRole = decoded.role;
     next();
   });
 };
