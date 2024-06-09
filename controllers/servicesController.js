@@ -1,6 +1,4 @@
-// backend/controllers/servicesController.js
-
-const pool = require('../services/db');
+const pool = require('../db');
 
 // Получить все услуги
 exports.getAllServices = async (req, res) => {

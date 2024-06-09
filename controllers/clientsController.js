@@ -1,4 +1,4 @@
-const pool = require('../services/db');
+const pool = require('../db');
 
 // Получить всех клиентов
 exports.getAllClients = async (req, res) => {

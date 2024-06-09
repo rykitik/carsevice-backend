@@ -1,4 +1,4 @@
-const pool = require('../services/db');
+const pool = require('../db');
 
 // Получить все записи на услуги
 exports.getAllAppointments = async (req, res) => {
