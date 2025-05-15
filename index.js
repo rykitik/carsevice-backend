@@ -29,4 +29,3 @@ app.use('/api/appointments', authenticateJWT, appointmentsRouter);
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
- sdfsd
