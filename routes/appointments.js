@@ -6,43 +6,48 @@ const router = express.Router();
 
 router.use(authenticateJWT);
 
-// GET всех записей (admin)
+// Получение всех записей
 router.get('/', async (req, res) => {
-  if (req.userRole !== 'admin') {
-    return res.status(403).json({ message: 'Forbidden' });
-  }
   try {
     const { rows } = await pool.query('SELECT * FROM appointments ORDER BY date, time');
     res.status(200).json(rows);
   } catch (err) {
-    console.error('Fetch appointments error:', err);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error('Ошибка получения записей:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
-// POST — создать новую запись (для всех авторизованных пользователей)
+// Создание новой записи
 router.post('/', async (req, res) => {
-  const { client_id, service_id, date, time } = req.body;
-
-  if (!client_id || !service_id || !date || !time) {
-    return res
-      .status(400).json({ message: 'Необходимо указать client_id, service_id, date и time' });
-  }
-
   try {
-    const { rows } = await pool.query(
-      `INSERT INTO appointments (client_id, service_id, date, time)
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-      [client_id, service_id, date, time]
+    const { date, time, client_id, service_id, status = 'pending' } = req.body;
+    const result = await pool.query(
+      'INSERT INTO appointments (date, time, client_id, service_id, status) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [date, time, client_id, service_id, status]
     );
-    res.status(201).json(rows[0]);
+    res.json(result.rows[0]);
   } catch (err) {
-    console.error('Create appointment error:', err);
-    res.status(500).json({ message: 'Ошибка сервера при создании записи' });
+    console.error('Ошибка создания записи:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
-// DELETE записи по ID (admin)
+// Обновление записи
+router.put('/:id', async (req, res) => {
+  try {
+    const { date, time, client_id, service_id, status } = req.body;
+    await pool.query(
+      'UPDATE appointments SET date=$1, time=$2, client_id=$3, service_id=$4, status=$5 WHERE id=$6',
+      [date, time, client_id, service_id, status, req.params.id]
+    );
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('Ошибка обновления записи:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Удаление записи
 router.delete('/:id', async (req, res) => {
   if (req.userRole !== 'admin') {
     return res.status(403).json({ message: 'Forbidden' });
