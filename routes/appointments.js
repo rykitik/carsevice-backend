@@ -20,14 +20,51 @@ router.get('/', async (req, res) => {
 // Создание новой записи
 router.post('/', async (req, res) => {
   try {
-    const { date, time, client_id, service_id, status = 'pending' } = req.body;
+    const {
+      location, date, time,
+      car_brand, car_model,
+      client_name, phone,
+      bonus_confirmed,
+      status = 'pending'
+    } = req.body;
+
     const result = await pool.query(
-      'INSERT INTO appointments (date, time, client_id, service_id, status) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [date, time, client_id, service_id, status]
+      `INSERT INTO appointments
+       (location, date, time, car_brand, car_model, client_name, phone, bonus_confirmed, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      [location, date, time, car_brand, car_model, client_name, phone, bonus_confirmed, status]
     );
-    res.json(result.rows[0]);
+
+    res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error('Ошибка создания записи:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Получение доступного времени
+router.get('/available-times', async (req, res) => {
+  try {
+    const { date, location } = req.query;
+
+    const allTimes = [
+      '09:00', '09:30', '10:00', '10:30',
+      '11:00', '11:30', '12:00', '12:30',
+      '13:00', '13:30', '14:00', '14:30',
+      '15:00', '15:30', '16:00', '16:30'
+    ];
+
+    const result = await pool.query(
+      `SELECT time FROM appointments WHERE date = $1 AND location = $2`,
+      [date, location]
+    );
+
+    const bookedTimes = result.rows.map(row => row.time);
+    const available = allTimes.filter(time => !bookedTimes.includes(time));
+
+    res.json({ available });
+  } catch (err) {
+    console.error('Ошибка получения времени:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
